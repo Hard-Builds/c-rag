@@ -1,11 +1,15 @@
 import os
 import shutil
+import uuid
 from contextlib import asynccontextmanager
+from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from db import Database
+from rag_core.graph import RAGGraph
 from rag_core.ingestor import pdfIngestor
 from rag_core.retiever import Retriever
 
@@ -21,7 +25,13 @@ async def lifespan(app: FastAPI):
     app.state.retriever = Retriever()
     await app.state.retriever.load()
 
-    yield
+    async with AsyncSqliteSaver.from_conn_string(
+            os.getenv("DEFAULT_DB_NAME")
+    ) as checkpointer:
+        rag_bot = await RAGGraph(app.state.retriever).build(checkpointer)
+        app.state.rag_bot = rag_bot
+
+        yield
 
     # clean up resources
 
@@ -43,10 +53,13 @@ async def ingest_file(file: UploadFile = File(...)):
 
 
 @app.get("/query")
-async def query(query: str):
-    retriever = app.state.retriever
-    samples = await retriever.get(query)
-    return {"data": samples}
+async def query(query: str, thread_id: Optional[uuid.UUID] = uuid.uuid4()):
+    rag_bot = app.state.rag_bot
+    response_state = await rag_bot.ainvoke(
+        input={"question": query},
+        config={"configurable": {"thread_id": str(thread_id)}}
+    )
+    return {"data": response_state["answer"]}
 
 
 if __name__ == "__main__":

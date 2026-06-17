@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import aiosqlite
@@ -25,8 +26,8 @@ class Database:
         """
     ]
 
-    def __init__(self, db_path: str = "vector_store.db"):
-        self.db_path = db_path
+    def __init__(self):
+        self.db_path = os.getenv("DEFAULT_DB_NAME")
 
     async def create_tables(self):
         async with aiosqlite.connect(self.db_path) as conn:
