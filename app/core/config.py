@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     DB_ECHO: bool = False
 
     EMBEDDING_DIM: int = 768  # Change to match your model (768 gemini, 1536 openai-small, 3072 openai-large)
+    MAX_CHAT_HISTORY: int = 6
 
     CORS_ALLOWED_URL: str | None = None
 
@@ -42,6 +43,13 @@ class Settings(BaseSettings):
     def db_url(self) -> str:
         return (
             f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        )
+
+    @property
+    def db_url_psycopg(self) -> str:
+        return (
+            f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 

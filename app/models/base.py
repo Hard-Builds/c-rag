@@ -1,7 +1,7 @@
 from typing import Generic, Optional, TypeVar
 
 from fastapi import status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
 

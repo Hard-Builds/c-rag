@@ -11,3 +11,8 @@ class RouteType(StrEnum):
 class UserRole(StrEnum):
     ADMIN = "admin"
     USER = "user"
+
+
+class MessageRoleEnum(StrEnum):
+    HUMAN = "human"
+    AI = "ai"

@@ -4,6 +4,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 import app.db.models
 from app.core import (
@@ -17,7 +18,7 @@ from app.core import (
 from app.core.custom_exceptions import CustomException
 from app.db import DBClient, run_migrations
 from app.middlewares import APITraceMiddleware, AuthMiddleware
-from app.rag import Retriever
+from app.rag import Retriever, RAGGraph
 from app.routers import v1_api_router
 
 
@@ -27,7 +28,15 @@ async def lifespan(app: FastAPI):
     await DBClient.initialise(app)
 
     Retriever.init()
-    yield
+
+    async with AsyncPostgresSaver.from_conn_string(
+            settings.db_url_psycopg
+    ) as checkpointer:
+        await checkpointer.setup()
+        rag_bot = await RAGGraph.init(checkpointer=checkpointer)
+        app.state.rag_bot = rag_bot
+
+        yield
 
 
 app = FastAPI(
