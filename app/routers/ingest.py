@@ -8,7 +8,7 @@ from starlette.requests import Request
 
 from app.db import DBClient
 from app.models import BaseResponse
-from app.rag import pdfIngestor
+from app.rag.ingestor import PdfIngestor
 
 ingest_router = APIRouter()
 
@@ -28,7 +28,7 @@ async def ingest_file(
     with open(file_path, "wb") as tmp:
         shutil.copyfileobj(file.file, tmp)
 
-    ingestor = pdfIngestor(
+    ingestor = PdfIngestor(
         db=db,
         user_id=requests.state.user.id,
         filename=filename,

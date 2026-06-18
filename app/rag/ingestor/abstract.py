@@ -1,52 +1,43 @@
-from langchain_community.document_loaders import PyPDFLoader
+from abc import ABC, abstractmethod
+
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core import settings
 from app.db.services import DocumentService, ChunkService
 
 
-class pdfIngestor:
-    def __init__(
-            self,
-            db: AsyncSession,
-            user_id: int,
-            filename: str,
-            file_path: str,
-            chunk_size: int = 1000,
-            chunk_overlap: int = 100
-    ):
+class BaseIngestor(ABC):
+    _embedding_model = None
+
+    def __init__(self, db, user_id, filename, file_path, chunk_size=1000,
+                 chunk_overlap=100):
         self.user_id = user_id
+        self.filename = filename
+        self.file_path = file_path
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.embedding_batch_size = 50
         self.doc_service = DocumentService(db)
         self.chunk_service = ChunkService(db)
 
-        self.filename = filename
-        self.file_path = file_path
+    @property
+    def _embedder(self):
+        if not getattr(self, "_embedding_model", None):
+            self._embedding_model = GoogleGenerativeAIEmbeddings(
+                model=settings.GEMINI_EMBEDDING_MODEL,
+                output_dimensionality=settings.EMBEDDING_DIM
+            )
+        return self._embedding_model
 
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-
-        self.embedding_batch_size = 50
-        self.embedding_model = GoogleGenerativeAIEmbeddings(
-            model=settings.GEMINI_EMBEDDING_MODEL,
-            output_dimensionality=settings.EMBEDDING_DIM
-        )
-
-    async def _validate_file(self) -> None:
-        if await self.doc_service.is_ingested(
-                user_id=self.user_id,
-                filename=self.filename
-        ):
-            raise Exception("Given file is already processed")
+    @abstractmethod
+    async def _load_documents(self) -> None:
+        pass
 
     async def ainvoke(self):
-        # validating file paths
-        await self._validate_file()
-
         # Loading data
-        document, docs = await self._load_documents()
+        docs = await self._load_documents()
 
         # Chunking data
         chunks = await self._chunk_docs(docs)
@@ -55,16 +46,11 @@ class pdfIngestor:
         embeddings = await self._embed_docs(chunks)
 
         # Storing data
-        await self._store_chunks(document, chunks, embeddings)
+        await self._store_chunks(chunks, embeddings)
 
-    async def _load_documents(self):
-        file_path = self.file_path
-        documents = await PyPDFLoader(file_path=file_path).aload()
-        document = await self.doc_service.create({
-            "user_id": self.user_id,
-            "filename": self.filename
-        })
-        return document, documents
+    @abstractmethod
+    async def _load_documents(self) -> list[Document]:
+        pass
 
     async def _chunk_docs(self, docs: list[Document]) -> list[Document]:
         splitter = RecursiveCharacterTextSplitter(
@@ -77,18 +63,22 @@ class pdfIngestor:
     async def _embed_docs(self, chunks: list[Document]):
         embeddings = []
 
-        embedder = self.embedding_model
         batch_size = self.embedding_batch_size
 
         for idx in range(0, len(chunks), batch_size):
             batch = chunks[idx: idx + batch_size]
             text = list(map(lambda x: x.page_content, batch))
-            batch_embeddings = await embedder.aembed_documents(text)
+            batch_embeddings = await self._embedder.aembed_documents(text)
             embeddings.extend(batch_embeddings)
 
         return embeddings
 
-    async def _store_chunks(self, document, chunks, embeddings) -> None:
+    async def _store_chunks(self, chunks, embeddings) -> None:
+        document = await self.doc_service.create({
+            "user_id": self.user_id,
+            "filename": self.filename
+        })
+
         chunk_data = []
         for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             chunk_data.append({
