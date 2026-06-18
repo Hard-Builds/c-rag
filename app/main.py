@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 import app.db.models
@@ -68,6 +70,10 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(CustomException, custom_exception_handler)
 app.add_exception_handler(Exception, get_generic_exception_handler(logger))
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+# Static frontend — must be last so it doesn't swallow API routes
+_static_dir = Path(__file__).parent / "static"
+app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

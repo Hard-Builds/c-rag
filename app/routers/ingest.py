@@ -12,7 +12,7 @@ from app.rag.ingestor import PdfIngestor
 
 ingest_router = APIRouter()
 
-UPLOAD_DIR = "static/uploads"
+UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 

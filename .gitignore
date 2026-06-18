@@ -28,4 +28,4 @@ sentence_model
 .*.sw?
 settings.json
 *.db*
-static
+upload
