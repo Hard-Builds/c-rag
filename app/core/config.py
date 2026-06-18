@@ -8,8 +8,14 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
 
     # Database
-    DB_PATH: str = "./c_rag.db"
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 5444
+    DB_NAME: str = "c_rag"
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "postgres"
     DB_ECHO: bool = False
+
+    EMBEDDING_DIM: int = 768  # Change to match your model (768 gemini, 1536 openai-small, 3072 openai-large)
 
     CORS_ALLOWED_URL: str | None = None
 
@@ -28,7 +34,10 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
-        return f"sqlite+aiosqlite:///{self.DB_PATH}"
+        return (
+            f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        )
 
     class Config:
         env_file = ".env"

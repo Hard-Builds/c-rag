@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -12,25 +14,23 @@ from app.core import (
     validation_exception_handler,
 )
 from app.core.custom_exceptions import CustomException
-from app.db import DBClient, run_migrations
+from app.db import DBClient
+import app.db.models
 from app.middlewares import APITraceMiddleware, AuthMiddleware
 from app.routers import v1_api_router
 
 
-async def _init_resources(app: FastAPI) -> None:
-    try:
-        run_migrations()
-        await DBClient.initialise(app)
-        logger.info("Database initialised")
-    except Exception as exc:
-        logger.exception("Startup failed: %s", exc)
-        raise
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await DBClient.initialise(app)
+    yield
 
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     redirect_slashes=False,
+    lifespan=lifespan
 )
 
 # CORS
@@ -46,9 +46,6 @@ app.add_middleware(
 # Custom middleware (added last = runs first)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(APITraceMiddleware)
-
-# Startup
-app.add_event_handler("startup", lambda: _init_resources(app))
 
 # Routers
 app.include_router(v1_api_router)

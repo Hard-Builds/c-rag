@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from starlette.requests import Request
@@ -37,6 +38,7 @@ class DBClient:
     @classmethod
     async def _create_tables(cls) -> None:
         async with cls._engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
 
     @staticmethod
