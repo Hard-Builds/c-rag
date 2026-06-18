@@ -1,0 +1,63 @@
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core import (
+    custom_exception_handler,
+    get_generic_exception_handler,
+    http_exception_handler,
+    logger,
+    settings,
+    validation_exception_handler,
+)
+from app.core.custom_exceptions import CustomException
+from app.db import DBClient, run_migrations
+from app.middlewares import APITraceMiddleware, AuthMiddleware
+from app.routers import v1_api_router
+
+
+async def _init_resources(app: FastAPI) -> None:
+    try:
+        run_migrations()
+        await DBClient.initialise(app)
+        logger.info("Database initialised")
+    except Exception as exc:
+        logger.exception("Startup failed: %s", exc)
+        raise
+
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    redirect_slashes=False,
+)
+
+# CORS
+origins = [u.strip() for u in (settings.CORS_ALLOWED_URL or "").split(",") if u.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Custom middleware (added last = runs first)
+app.add_middleware(AuthMiddleware)
+app.add_middleware(APITraceMiddleware)
+
+# Startup
+app.add_event_handler("startup", lambda: _init_resources(app))
+
+# Routers
+app.include_router(v1_api_router)
+
+# Exception handlers
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(CustomException, custom_exception_handler)
+app.add_exception_handler(Exception, get_generic_exception_handler(logger))
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
