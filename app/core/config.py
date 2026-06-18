@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # Internal service-to-service auth
     INTERNAL_TOKEN: str | None = None
 
+    # llm
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str | None = None
+    GEMINI_EMBEDDING_MODEL: str | None = None
+    GEMINI_IMAGE_MODEL: str | None = None
+
     def validate_env_variables(self) -> None:
         required = {
             "CORS_ALLOWED_URL": self.CORS_ALLOWED_URL,

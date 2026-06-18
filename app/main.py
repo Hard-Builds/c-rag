@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.db.models
 from app.core import (
     custom_exception_handler,
     get_generic_exception_handler,
@@ -14,14 +15,14 @@ from app.core import (
     validation_exception_handler,
 )
 from app.core.custom_exceptions import CustomException
-from app.db import DBClient
-import app.db.models
+from app.db import DBClient, run_migrations
 from app.middlewares import APITraceMiddleware, AuthMiddleware
 from app.routers import v1_api_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    run_migrations()
     await DBClient.initialise(app)
     yield
 

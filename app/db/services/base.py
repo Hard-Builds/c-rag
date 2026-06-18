@@ -37,6 +37,16 @@ class BaseDB(Generic[ModelType]):
             await self.db.refresh(obj)
         return obj
 
+    async def create_many(self, objs_in: List[Dict[str, Any]], commit: bool = True) -> List[ModelType]:
+        objs = [self.model(**obj) for obj in objs_in]
+        self.db.add_all(objs)
+        await self.db.flush()
+        if commit:
+            await self.db.commit()
+            for obj in objs:
+                await self.db.refresh(obj)
+        return objs
+
     async def update(self, _id: int, obj_in: Dict[str, Any], commit: bool = True) -> Optional[ModelType]:
         db_obj = await self.db.get(self.model, _id)
         if db_obj is None:

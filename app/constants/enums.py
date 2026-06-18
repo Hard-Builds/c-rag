@@ -6,3 +6,8 @@ class RouteType(StrEnum):
     PUBLIC = auto()
     PRIVATE = auto()
     INTERNAL = auto()
+
+
+class UserRole(StrEnum):
+    ADMIN = "admin"
+    USER = "user"
