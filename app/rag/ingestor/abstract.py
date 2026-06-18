@@ -86,7 +86,7 @@ class BaseIngestor(ABC):
                 "content": chunk.page_content,
                 "embedding": embedding,
                 "chunk_index": idx,
-                "metadata": chunk.metadata,
+                "metadata_": chunk.metadata,
             })
 
         await self.chunk_service.create_many(chunk_data)

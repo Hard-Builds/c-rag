@@ -4,6 +4,7 @@ from fastapi.security import APIKeyHeader
 from app.constants import RouteType
 from .health import health_router
 from .ingest import ingest_router
+from .thread import thread_router
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
@@ -17,6 +18,8 @@ private_router = APIRouter(
     prefix=f"/{RouteType.PRIVATE}", dependencies=[Security(api_key_header)]
 )
 private_router.include_router(ingest_router, prefix="/ingest", tags=["Ingest"])
+private_router.include_router(thread_router, prefix="/thread",
+                              tags=["threads"])
 
 # ADMIN — Bearer token + admin role (enforced by AuthMiddleware)
 admin_router = APIRouter(

@@ -1,33 +1,30 @@
-from langchain_community.vectorstores import FAISS
-from langchain_core.documents import Document
+from uuid import UUID
+
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from app.core.config import settings
+from app.db.models import Chunk
 from app.db.services import ChunkService
 
 
 class Retriever:
-    _retriever = None
+    _embedding_model = None
 
     @classmethod
-    async def load(cls):
-        chunk_data = await ChunkService().fetch_all_chunks()
-        embedding_model = GoogleGenerativeAIEmbeddings(
-            model=settings.GEMINI_EMBEDDING_MODEL
-        )
-
-        cls._retriever = await FAISS.afrom_embeddings(
-            text_embeddings=list(map(
-                lambda x: (x["text"], x["embedding"]),
-                chunk_data
-            )),
-            embedding=embedding_model,
-            metadatas=list(map(
-                lambda x: {"id": x["id"], "page_number": x["page_number"]},
-                chunk_data
-            ))
-        )
+    def init(cls):
+        if cls._embedding_model is None:
+            cls._embedding_model = GoogleGenerativeAIEmbeddings(
+                model=settings.GEMINI_EMBEDDING_MODEL,
+                output_dimensionality=settings.EMBEDDING_DIM
+            )
+        return cls._embedding_model
 
     @classmethod
-    async def get(cls, query: str, top_k: int = 5) -> list[Document]:
-        return await cls._retriever.asimilarity_search(query, k=top_k)
+    async def get(cls, db, user_id: UUID, query: str, top_k: int = 5) -> \
+            list[Chunk]:
+        query_embedding = await cls._embedding_model.aembed_query(query)
+        return await ChunkService(db).similarity_search(
+            user_id=user_id,
+            embedding=query_embedding,
+            limit=top_k
+        )

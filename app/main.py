@@ -17,6 +17,7 @@ from app.core import (
 from app.core.custom_exceptions import CustomException
 from app.db import DBClient, run_migrations
 from app.middlewares import APITraceMiddleware, AuthMiddleware
+from app.rag import Retriever
 from app.routers import v1_api_router
 
 
@@ -24,6 +25,8 @@ from app.routers import v1_api_router
 async def lifespan(app: FastAPI):
     run_migrations()
     await DBClient.initialise(app)
+
+    Retriever.init()
     yield
 
 
