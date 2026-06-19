@@ -5,6 +5,10 @@ from pydantic import BaseModel, ConfigDict
 from app.constants.enums import MessageRoleEnum
 
 
+# ------- Request models -------
+class QueryRequest(BaseModel):
+    query: str
+
 class ThreadListRespModel(BaseModel):
     id: UUID
     title: str

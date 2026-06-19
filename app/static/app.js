@@ -101,11 +101,9 @@ function scrollToBottom() {
 
 // ── Send message ──────────────────────────────────────────
 async function sendMessage(query) {
-  // Determine thread — generate UUID client-side for new threads
   const isNewThread = !state.activeThreadId;
   const threadId = state.activeThreadId ?? crypto.randomUUID();
 
-  // Optimistically show the human message
   const humanMsg = { id: crypto.randomUUID(), role: "human", content: query };
   setState({ messages: [...state.messages, humanMsg], isLoading: true });
   showChatPanel();
@@ -114,21 +112,41 @@ async function sendMessage(query) {
   document.getElementById("loading-indicator").hidden = false;
 
   try {
-    const answer = await apiFetch(
-      `/private/thread/${threadId}/query?query=${encodeURIComponent(query)}`,
-      { method: "POST" }
+    const res = await fetch(
+      `${CONFIG.BASE_URL}/private/thread/${threadId}/query`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${CONFIG.TOKEN}`,
+        },
+        body: JSON.stringify({ query }),
+      }
     );
 
-    const aiMsg = { id: crypto.randomUUID(), role: "ai", content: answer };
-    setState({
-      activeThreadId: threadId,
-      messages: [...state.messages, aiMsg],
-      isLoading: false,
-    });
+    if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+
+    const aiMsg = { id: crypto.randomUUID(), role: "ai", content: "" };
+    setState({ activeThreadId: threadId, messages: [...state.messages, aiMsg] });
     renderMessages();
 
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      aiMsg.content += decoder.decode(value, { stream: true });
+      const bubbles = document.querySelectorAll(".msg-ai .msg-markdown");
+      if (bubbles.length) {
+        bubbles[bubbles.length - 1].innerHTML = marked.parse(aiMsg.content);
+        scrollToBottom();
+      }
+    }
+
+    setState({ isLoading: false });
+
     if (isNewThread) {
-      // Refresh sidebar so the new thread appears with its LLM-generated title
       await loadThreads();
       renderThreadList();
     }

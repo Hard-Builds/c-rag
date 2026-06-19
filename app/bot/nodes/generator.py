@@ -1,6 +1,6 @@
 import time
 
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.prompts import HumanMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -53,18 +53,42 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
     chain = prompt | llm_model
 
     start = time.monotonic()
-    ai_msg = await chain.ainvoke({
+
+    answer_chunks = []
+    full_response = None
+    async for event in chain.astream_events({
         "question": state["question"],
         "context": context_chunk
-    })
+    }):
+        if event["event"] == "on_chat_model_stream":
+            chunk = event["data"]["chunk"]
+            if chunk.content:
+                chunk_content = await str_parser.ainvoke(chunk)
+                answer_chunks.append(chunk_content)
+                # Push token to the stream queue
+                queue = config["configurable"].get("stream_queue")
+                if queue:
+                    await queue.put(chunk_content)
+
+        elif event["event"] == "on_chat_model_end":
+            full_response = event["data"]["output"]
+
     latency_ms = int((time.monotonic() - start) * 1000)
+    answer_str = "".join(answer_chunks)
+
+    # Signal Streaming is done
+    if queue := config["configurable"].get("stream_queue"):
+        await queue.put(None)
 
     # Storing the messages
     db = config["configurable"]["db"]
     thread_id = config["configurable"]["thread_id"]
-    metadata = ai_msg.usage_metadata or {}
 
     msg_service = MessageService(db)
+
+    metadata = {}
+    if full_response and hasattr(full_response, "usage_metadata"):
+        metadata = full_response.usage_metadata or {}
 
     # Human message
     _ = await msg_service.create({
@@ -75,7 +99,6 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
     })
 
     # AI message
-    answer_str = await str_parser.ainvoke(ai_msg)
     _ = await msg_service.create({
         "thread_id": thread_id,
         "role": MessageRoleEnum.AI,
@@ -87,5 +110,5 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
     return {
         "answer": answer_str,
         "context": [],
-        "messages": [HumanMessage(state["question"]), ai_msg]
+        "messages": [HumanMessage(state["question"]), AIMessage(answer_str)]
     }

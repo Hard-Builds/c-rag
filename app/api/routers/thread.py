@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from typing import Optional
 from uuid import UUID
@@ -8,7 +9,8 @@ from starlette import status
 from starlette.requests import Request
 
 from app.api.models import BaseResponse, ThreadListRespModel, \
-    ThreadMessageListRespModel
+    ThreadMessageListRespModel, QueryRequest
+from app.api.utils import SafeStreamingResponse
 from app.core import logger
 from app.db import DBClient
 from app.db.services import ThreadService, MessageService
@@ -62,25 +64,42 @@ async def get_thread_conversation(
 @thread_router.post("/{thread_id}/query")
 async def query(
         request: Request,
-        query: str,
+        body: QueryRequest,
         thread_id: Optional[uuid.UUID],
-        db: AsyncSession = Depends(DBClient.get_db_session),
 ):
     user_id = request.state.user.id
     rag_bot = request.app.state.rag_bot
-    response_state = await rag_bot.ainvoke(
-        input={
-            "question": query
-        },
-        config={"configurable": {
-            "thread_id": thread_id,
-            "db": db,
-            "user_id": user_id,
-        }}
-    )
-    logger.info(f"response_state: {response_state}")
-    answer = response_state["answer"]
-    return BaseResponse(
-        message="Got your response",
-        payload=answer
+
+    queue = asyncio.Queue()
+
+    async def run_graph():
+        async with DBClient._session_factory() as session:
+            try:
+                await rag_bot.ainvoke(
+                    input={
+                        "question": body.query
+                    },
+                    config={"configurable": {
+                        "thread_id": thread_id,
+                        "db": session,
+                        "user_id": user_id,
+                        "stream_queue": queue,
+                    }}
+                )
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Graph error: {e}")
+                await queue.put(None)
+
+    async def token_generator():
+        asyncio.create_task(run_graph())
+        while True:
+            token = await queue.get()
+            if token is None:
+                break
+            yield token
+
+    return SafeStreamingResponse(
+        token_generator(),
+        media_type="text/plain"
     )
