@@ -86,6 +86,7 @@ async def query(
                         "stream_queue": queue,
                     }}
                 )
+                await session.commit()
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Graph error: {e}")

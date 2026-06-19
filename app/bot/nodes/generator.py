@@ -96,7 +96,7 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
         "role": MessageRoleEnum.HUMAN,
         "content": state["question"],
         "token_count": metadata.get("input_tokens")
-    })
+    }, commit=False)
 
     # AI message
     _ = await msg_service.create({
@@ -105,7 +105,7 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
         "content": answer_str,
         "token_count": metadata.get("output_tokens"),
         "latency_ms": latency_ms
-    })
+    }, commit=False)
 
     return {
         "answer": answer_str,

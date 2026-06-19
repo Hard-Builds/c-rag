@@ -52,6 +52,7 @@ function renderThreadList() {
 
 async function selectThread(threadId) {
   setState({ activeThreadId: threadId, messages: [] });
+  history.pushState({}, "", `/chat/${threadId}`);
   renderThreadList();
   showChatPanel();
   await loadMessages(threadId);
@@ -237,6 +238,7 @@ function wireEvents() {
   // New chat
   document.getElementById("new-chat-btn").addEventListener("click", () => {
     setState({ activeThreadId: null, messages: [] });
+    history.pushState({}, "", "/");
     renderThreadList();
     showEmptyState();
     document.getElementById("query-input").value = "";
@@ -282,6 +284,11 @@ async function init() {
     await loadThreads();
   } catch (err) {
     console.error("Failed to load threads:", err);
+  }
+
+  const match = window.location.pathname.match(/\/chat\/([a-f0-9-]{36})/);
+  if (match) {
+    await selectThread(match[1]);
   }
 }
 

@@ -26,5 +26,5 @@ async def upsert_thread(state: RAGState, config: RunnableConfig):
         "id": config_data["thread_id"],
         "user_id": config_data["user_id"],
         "title": thread_title_str
-    })
+    }, commit=False)
     return {}

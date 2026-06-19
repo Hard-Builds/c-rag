@@ -80,4 +80,4 @@ class BaseIngestor(ABC):
                 "metadata_": chunk.metadata,
             })
 
-        await self.chunk_service.create_many(chunk_data)
+        await self.chunk_service.create_many(chunk_data, commit=False)
