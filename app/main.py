@@ -5,10 +5,12 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 import app.db.models
+from app.api.routers import v1_api_router
 from app.core import (
     custom_exception_handler,
     get_generic_exception_handler,
@@ -21,7 +23,6 @@ from app.core.custom_exceptions import CustomException
 from app.db import DBClient, run_migrations
 from app.middlewares import APITraceMiddleware, AuthMiddleware
 from app.rag import Retriever, RAGGraph
-from app.api.routers import v1_api_router
 
 
 @asynccontextmanager
@@ -73,6 +74,12 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # Static frontend — must be last so it doesn't swallow API routes
 _static_dir = Path(__file__).parent / "static"
+
+
+@app.get("/chat/{rest_of_path:path}", include_in_schema=False)
+async def spa_fallback(rest_of_path: str):
+    return FileResponse(_static_dir / "index.html")
+
 app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
 
 if __name__ == "__main__":

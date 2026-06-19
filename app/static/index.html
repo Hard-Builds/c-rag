@@ -16,18 +16,19 @@
         <button id="new-chat-btn" title="New Chat">+ New Chat</button>
       </div>
 
+      <div class="sidebar-section-label">Threads</div>
       <ul id="thread-list" role="listbox" aria-label="Conversations"></ul>
 
       <div class="sidebar-footer">
-        <button id="upload-btn">&#8593; Upload Documents</button>
-        <button id="docs-btn">&#9776; Manage Documents</button>
+        <button id="upload-btn">&#8593; Upload a document</button>
+        <button id="docs-btn">&#9776; View documents</button>
       </div>
     </aside>
 
     <!-- Chat Panel -->
     <main id="chat-panel">
       <div id="empty-state">
-        <p>Start a conversation or select one from the sidebar.</p>
+        <p>Ask a question across your documents.</p>
       </div>
 
       <div id="messages-container" aria-live="polite"></div>
@@ -36,16 +37,18 @@
         <span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </div>
 
-      <form id="chat-form">
-        <input
-          id="query-input"
-          type="text"
-          placeholder="Ask something..."
-          autocomplete="off"
-          required
-        />
-        <button type="submit" id="send-btn">Send</button>
-      </form>
+      <div id="chat-form-wrap">
+        <form id="chat-form">
+          <input
+            id="query-input"
+            type="text"
+            placeholder="Ask a question..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" id="send-btn">send →</button>
+        </form>
+      </div>
     </main>
 
   </div>
