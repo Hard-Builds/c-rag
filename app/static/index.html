@@ -75,10 +75,13 @@
   <!-- Docs Modal -->
   <div id="docs-modal" role="dialog" aria-modal="true" aria-label="Manage Documents" hidden>
     <div class="modal-backdrop" data-closes="docs-modal"></div>
-    <div class="modal-card modal-card--wide">
+    <div class="modal-card modal-card--docs">
       <div class="modal-header">
         <h2>Documents</h2>
-        <button class="modal-close" id="docs-modal-close-btn" aria-label="Close">&times;</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="docs-add-btn" class="btn-primary" style="padding:5px 12px;font-size:0.82rem;">+ Add</button>
+          <button class="modal-close" id="docs-modal-close-btn" aria-label="Close">&times;</button>
+        </div>
       </div>
       <div class="modal-body">
         <div id="docs-list-status" class="upload-status" hidden></div>
@@ -87,6 +90,9 @@
             <tr>
               <th>Filename</th>
               <th>Uploaded</th>
+              <th>Updated</th>
+              <th>Status</th>
+              <th>Error</th>
               <th></th>
             </tr>
           </thead>
@@ -97,6 +103,7 @@
         </p>
       </div>
       <div class="modal-footer">
+        <button id="docs-refresh-btn" class="btn-secondary">&#8635; Refresh</button>
         <button id="docs-modal-close-footer-btn" class="btn-secondary">Close</button>
       </div>
     </div>

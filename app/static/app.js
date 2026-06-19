@@ -190,16 +190,35 @@ async function loadDocuments() {
       return;
     }
     for (const doc of docs) {
-      const tr = document.createElement("tr");
-      const date = new Date(doc.uploaded_at).toLocaleDateString(undefined, {
+      const fmtDate = (iso) => new Date(iso).toLocaleString(undefined, {
         year: "numeric", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
       });
-      tr.innerHTML = `<td>${doc.filename}</td><td>${date}</td><td></td>`;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${doc.filename}</td><td>${fmtDate(doc.uploaded_at)}</td><td>${fmtDate(doc.updated_at)}</td><td></td><td></td><td></td>`;
+
+      const statusTd = tr.querySelectorAll("td")[3];
+      const badge = document.createElement("span");
+      badge.className = `status-badge status-badge--${doc.status}`;
+      badge.textContent = doc.status;
+      statusTd.appendChild(badge);
+
+      if (doc.error) {
+        const truncated = doc.error.length > 32 ? doc.error.slice(0, 32) + "…" : doc.error;
+        const errSpan = document.createElement("span");
+        errSpan.className = "doc-error-inline";
+        errSpan.textContent = truncated;
+        errSpan.title = doc.error;
+        tr.querySelectorAll("td")[4].appendChild(errSpan);
+      }
+
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "btn-delete";
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => deleteDocument(doc.id, tr, deleteBtn));
       tr.querySelector("td:last-child").appendChild(deleteBtn);
+
       tbody.appendChild(tr);
     }
     table.hidden = false;
@@ -265,10 +284,10 @@ async function uploadFile() {
 
   try {
     await apiFetch("/private/document/ingest", { method: "POST", body: formData });
-    showUploadStatus("Document uploaded and indexed successfully.", "success");
+    showUploadStatus("Document uploaded successfully.", "success");
     document.getElementById("file-label-text").textContent = "Choose a PDF file";
     fileInput.value = "";
-    setTimeout(closeModal, 1800);
+    setTimeout(() => { closeModal(); openDocsModal(); }, 1800);
   } catch (err) {
     showUploadStatus(`Upload failed: ${err.message}`, "error");
     document.getElementById("upload-confirm-btn").disabled = false;
@@ -329,6 +348,8 @@ function wireEvents() {
   document.getElementById("docs-btn").addEventListener("click", openDocsModal);
   document.getElementById("docs-modal-close-btn").addEventListener("click", closeDocsModal);
   document.getElementById("docs-modal-close-footer-btn").addEventListener("click", closeDocsModal);
+  document.getElementById("docs-refresh-btn").addEventListener("click", loadDocuments);
+  document.getElementById("docs-add-btn").addEventListener("click", () => { closeDocsModal(); openModal(); });
 
   // Backdrop click closes the right modal
   document.querySelectorAll(".modal-backdrop").forEach((el) => {

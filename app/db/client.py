@@ -2,7 +2,8 @@ from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, \
+    async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from starlette.requests import Request
 
@@ -52,3 +53,19 @@ class DBClient:
             raise
         finally:
             await session.close()
+
+    @classmethod
+    def get_session(cls):
+        if cls._session_factory is None:
+            cls._engine = create_async_engine(
+                settings.db_url,
+                echo=settings.DB_ECHO
+            )
+            cls._session_factory = async_sessionmaker(
+                bind=cls._engine,
+                autocommit=False,
+                autoflush=False,
+                expire_on_commit=False,
+                class_=AsyncSession,
+            )
+        return cls._session_factory()

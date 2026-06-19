@@ -264,7 +264,8 @@ body {
 #upload-modal[hidden],
 #docs-modal[hidden] { display: none; }
 
-.modal-card--wide { width: 560px; }
+.modal-card--wide { width: 560px !important; }
+.modal-card--docs { width: 820px !important; max-width: calc(100vw - 32px) !important; }
 
 #docs-table {
   width: 100%;
@@ -287,6 +288,30 @@ body {
 #docs-table td { color: var(--text); }
 #docs-table tbody tr:last-child td { border-bottom: none; }
 #docs-table tbody tr:hover td { background: var(--surface-hover); }
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.3px;
+}
+.status-badge--processing { background: rgba(91,141,238,0.15); color: var(--accent); }
+.status-badge--completed  { background: rgba(76,173,126,0.15); color: var(--success); }
+.status-badge--failed     { background: rgba(224,82,82,0.15);  color: var(--danger); }
+
+.doc-error-inline {
+  display: inline-block;
+  font-size: 0.78rem;
+  color: var(--danger);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  cursor: default;
+}
 
 .btn-delete {
   background: transparent;

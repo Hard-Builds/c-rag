@@ -16,3 +16,8 @@ class UserRole(StrEnum):
 class MessageRoleEnum(StrEnum):
     HUMAN = "human"
     AI = "ai"
+
+class DocumentStatusEnum(StrEnum):
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
