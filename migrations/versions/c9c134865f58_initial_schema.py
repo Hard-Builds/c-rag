@@ -66,6 +66,7 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("user_id", sa.UUID(), nullable=False),
         sa.Column("filename", sa.String(), nullable=False),
+        sa.Column("file_path", sa.String(), nullable=False),
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("uploaded_at", sa.DateTime(timezone=True), server_default=sa.text("(NOW() AT TIME ZONE 'UTC')"), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),

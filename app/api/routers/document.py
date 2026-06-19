@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import UploadFile, File
@@ -8,18 +9,20 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 from starlette import status
 from starlette.requests import Request
 
-from app.api.models import BaseResponse
+from app.api.models import BaseResponse, DocumentListResponse, DocumentResp
+from app.core import logger
 from app.db import DBClient
+from app.db.services import DocumentService
 from app.rag.ingestor import PdfIngestor
 
-ingest_router = APIRouter()
+document_router = APIRouter()
 
 UPLOAD_DIR = Path(__file__).parent.parent.parent / "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-@ingest_router.post("/")
-async def ingest_file(
+@document_router.post("/ingest")
+async def ingest_document(
         requests: Request,
         file: UploadFile = File(...),
         db: AsyncSession = Depends(DBClient.get_db_session),
@@ -53,3 +56,36 @@ async def ingest_file(
     )
     await ingestor.ainvoke()
     return BaseResponse(message=f"{file.filename} ingested successfully")
+
+
+@document_router.get("/")
+async def list_documents(
+        request: Request,
+        db: AsyncSession = Depends(DBClient.get_db_session),
+):
+    document_service = DocumentService(db)
+    document_list = await document_service.get_all_by_filter(
+        user_id=request.state.user.id)
+    return DocumentListResponse(
+        message="Documents fetched successfully.",
+        payload=[
+            DocumentResp.model_validate(doc) for doc in document_list
+        ]
+    )
+
+
+@document_router.delete("/")
+async def delete_document(
+        request: Request,
+        document_id: UUID,
+        db: AsyncSession = Depends(DBClient.get_db_session),
+):
+    document_service = DocumentService(db)
+    deleted_count = await document_service.delete_all_by_filter(
+        id=document_id,
+        user_id=request.state.user.id
+    )
+    logger.info(f"Deleted : {deleted_count} : {document_id}")
+    return BaseResponse(
+        message="Deleted the document"
+    )

@@ -67,7 +67,8 @@ class BaseIngestor(ABC):
         # Updating DB with the records
         document = await self.doc_service.create({
             "user_id": self.user_id,
-            "filename": self.filename
+            "filename": self.filename,
+            "file_path": self.file_path
         })
 
         chunk_data = []

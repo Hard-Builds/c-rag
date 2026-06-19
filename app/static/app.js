@@ -162,6 +162,71 @@ async function sendMessage(query) {
   }
 }
 
+// ── Docs modal ────────────────────────────────────────────
+function openDocsModal() {
+  document.getElementById("docs-modal").hidden = false;
+  loadDocuments();
+}
+
+function closeDocsModal() {
+  document.getElementById("docs-modal").hidden = true;
+}
+
+async function loadDocuments() {
+  const tbody = document.getElementById("docs-tbody");
+  const table = document.getElementById("docs-table");
+  const empty = document.getElementById("docs-empty");
+  const statusEl = document.getElementById("docs-list-status");
+
+  tbody.innerHTML = "";
+  table.hidden = true;
+  empty.hidden = true;
+  statusEl.hidden = true;
+
+  try {
+    const docs = await apiFetch("/private/document/");
+    if (!docs || docs.length === 0) {
+      empty.hidden = false;
+      return;
+    }
+    for (const doc of docs) {
+      const tr = document.createElement("tr");
+      const date = new Date(doc.uploaded_at).toLocaleDateString(undefined, {
+        year: "numeric", month: "short", day: "numeric",
+      });
+      tr.innerHTML = `<td>${doc.filename}</td><td>${date}</td><td></td>`;
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-delete";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => deleteDocument(doc.id, tr, deleteBtn));
+      tr.querySelector("td:last-child").appendChild(deleteBtn);
+      tbody.appendChild(tr);
+    }
+    table.hidden = false;
+  } catch (err) {
+    statusEl.textContent = `Failed to load documents: ${err.message}`;
+    statusEl.className = "upload-status error";
+    statusEl.hidden = false;
+  }
+}
+
+async function deleteDocument(id, rowEl, btnEl) {
+  if (!confirm("Delete this document?")) return;
+  btnEl.disabled = true;
+  try {
+    await apiFetch(`/private/document/?document_id=${id}`, { method: "DELETE" });
+    rowEl.remove();
+    const tbody = document.getElementById("docs-tbody");
+    if (!tbody.children.length) {
+      document.getElementById("docs-table").hidden = true;
+      document.getElementById("docs-empty").hidden = false;
+    }
+  } catch (err) {
+    alert(`Delete failed: ${err.message}`);
+    btnEl.disabled = false;
+  }
+}
+
 // ── Upload modal ──────────────────────────────────────────
 function openModal() {
   const modal = document.getElementById("upload-modal");
@@ -199,7 +264,7 @@ async function uploadFile() {
   showUploadStatus("Uploading and processing...", "loading");
 
   try {
-    await apiFetch("/private/ingest/", { method: "POST", body: formData });
+    await apiFetch("/private/document/ingest", { method: "POST", body: formData });
     showUploadStatus("Document uploaded and indexed successfully.", "success");
     document.getElementById("file-label-text").textContent = "Choose a PDF file";
     fileInput.value = "";
@@ -255,15 +320,23 @@ function wireEvents() {
     await sendMessage(query);
   });
 
-  // Upload modal open
+  // Upload modal
   document.getElementById("upload-btn").addEventListener("click", openModal);
-
-  // Modal close buttons
   document.getElementById("modal-close-btn").addEventListener("click", closeModal);
   document.getElementById("upload-cancel-btn").addEventListener("click", closeModal);
 
-  // Backdrop click closes modal
-  document.querySelector(".modal-backdrop").addEventListener("click", closeModal);
+  // Docs modal
+  document.getElementById("docs-btn").addEventListener("click", openDocsModal);
+  document.getElementById("docs-modal-close-btn").addEventListener("click", closeDocsModal);
+  document.getElementById("docs-modal-close-footer-btn").addEventListener("click", closeDocsModal);
+
+  // Backdrop click closes the right modal
+  document.querySelectorAll(".modal-backdrop").forEach((el) => {
+    el.addEventListener("click", () => {
+      const modalId = el.dataset.closes;
+      if (modalId) document.getElementById(modalId).hidden = true;
+    });
+  });
 
   // File picker label update
   document.getElementById("file-input").addEventListener("change", (e) => {

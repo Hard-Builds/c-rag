@@ -23,6 +23,7 @@ class Document(Base):
         nullable=False,
     )
     filename: Mapped[str] = mapped_column(String, nullable=False)
+    file_path: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False,
                                         default="uploaded")
     uploaded_at: Mapped[str] = mapped_column(
