@@ -8,6 +8,7 @@ from langchain_core.runnables import RunnableConfig
 from app.bot import RAGState
 from app.bot.llm import llm_model, str_parser
 from app.constants.enums import MessageRoleEnum
+from app.core import logger
 from app.db.services import MessageService
 
 
@@ -16,7 +17,7 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
 
     context_chunk = ""
     if context:
-        print("Proceeding with context...")
+        logger.info("Proceeding with context...")
         context_chunk = "\n".join([
             f"[{idx + 1}]. {chunk.page_content}"
             for idx, chunk in enumerate(context)
@@ -36,7 +37,7 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
             )
         ]
     else:
-        print("Proceeding without context...")
+        logger.info("Proceeding without context...")
         prompt_message_list = [
             SystemMessage(
                 content="You are a helpful assistant."

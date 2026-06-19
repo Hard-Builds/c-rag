@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.models import BaseResponse
+from app.api.models import BaseResponse
 
 health_router = APIRouter()
 

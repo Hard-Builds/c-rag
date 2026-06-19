@@ -35,7 +35,7 @@ class AppLogger:
     @classmethod
     def setup_logging(cls) -> None:
         log_level = settings.LOG_LEVEL.upper()
-        root = logging.getLogger()
+        root = logging.getLogger("app")
         root.setLevel(log_level)
         handler = logging.StreamHandler(sys.stdout)
         fmt = RelativePathFormatter(

@@ -7,10 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.requests import Request
 
+from app.api.models import BaseResponse, ThreadListRespModel, \
+    ThreadMessageListRespModel
+from app.core import logger
 from app.db import DBClient
 from app.db.services import ThreadService, MessageService
-from app.models import BaseResponse, ThreadListRespModel, \
-    ThreadMessageListRespModel
 
 thread_router = APIRouter()
 
@@ -77,7 +78,7 @@ async def query(
             "user_id": user_id,
         }}
     )
-    print(f"response_state: {response_state}")
+    logger.info(f"response_state: {response_state}")
     answer = response_state["answer"]
     return BaseResponse(
         message="Got your response",

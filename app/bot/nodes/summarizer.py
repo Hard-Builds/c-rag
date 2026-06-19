@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate, \
 
 from app.bot import RAGState
 from app.bot.llm import llm_model, str_parser
-
+from app.core import logger
 
 async def summarizer(state: RAGState) -> dict:
     if state.get("summary"):
@@ -20,7 +20,7 @@ async def summarizer(state: RAGState) -> dict:
 
     chain = prompt | llm_model | str_parser
     summary = await chain.ainvoke({"summary": state.get("summary", "")})
-    print("Updating Conversation summary...")
+    logger.info("Updating Conversation summary...")
 
     remove_msgs = [RemoveMessage(id=msg.id) for msg in
                    state["messages"][:-2]]

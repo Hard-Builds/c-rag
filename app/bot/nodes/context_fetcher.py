@@ -1,8 +1,8 @@
 from langchain_core.runnables import RunnableConfig
 
 from app.bot import RAGState
+from app.core import logger
 from app.rag.retriever import Retriever
-
 
 async def context_retriever(state: RAGState, config: RunnableConfig) -> dict:
     config_dict = config["configurable"]
@@ -11,5 +11,5 @@ async def context_retriever(state: RAGState, config: RunnableConfig) -> dict:
         user_id=config_dict["user_id"],
         query=state["question"]
     )
-    print("Fetching Context...")
+    logger.info("Fetching Context...")
     return {"context": context}

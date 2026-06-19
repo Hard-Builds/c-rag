@@ -21,7 +21,7 @@ from app.core.custom_exceptions import CustomException
 from app.db import DBClient, run_migrations
 from app.middlewares import APITraceMiddleware, AuthMiddleware
 from app.rag import Retriever, RAGGraph
-from app.routers import v1_api_router
+from app.api.routers import v1_api_router
 
 
 @asynccontextmanager

@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse
 
 from app.constants import REQUEST_VALIDATION_ERROR
 from app.core.custom_exceptions import CustomException
-from app.models import BaseResponse
+from app.api.models import BaseResponse
 
 
 async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:

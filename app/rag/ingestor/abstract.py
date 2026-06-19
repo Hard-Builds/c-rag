@@ -31,28 +31,21 @@ class BaseIngestor(ABC):
             )
         return self._embedding_model
 
-    @abstractmethod
-    async def _load_documents(self) -> None:
-        pass
-
     async def ainvoke(self):
         # Loading data
         docs = await self._load_documents()
 
         # Chunking data
-        chunks = await self._chunk_docs(docs)
+        chunks = await self._split_documents(docs)
 
-        # Embedding data
-        embeddings = await self._embed_docs(chunks)
-
-        # Storing data
-        await self._store_chunks(chunks, embeddings)
+        # Embedding and store data
+        await self._embed_and_store(chunks)
 
     @abstractmethod
     async def _load_documents(self) -> list[Document]:
         pass
 
-    async def _chunk_docs(self, docs: list[Document]) -> list[Document]:
+    async def _split_documents(self, docs: list[Document]) -> list[Document]:
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap
@@ -60,7 +53,7 @@ class BaseIngestor(ABC):
         chunks = splitter.split_documents(documents=docs)
         return chunks
 
-    async def _embed_docs(self, chunks: list[Document]):
+    async def _embed_and_store(self, chunks: list[Document]):
         embeddings = []
 
         batch_size = self.embedding_batch_size
@@ -71,9 +64,7 @@ class BaseIngestor(ABC):
             batch_embeddings = await self._embedder.aembed_documents(text)
             embeddings.extend(batch_embeddings)
 
-        return embeddings
-
-    async def _store_chunks(self, chunks, embeddings) -> None:
+        # Updating DB with the records
         document = await self.doc_service.create({
             "user_id": self.user_id,
             "filename": self.filename
