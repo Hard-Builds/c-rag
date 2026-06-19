@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Bot</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span class="app-title">RAG Bot</span>
+        <button id="new-chat-btn" title="New Chat">+ New Chat</button>
+      </div>
+
+      <ul id="thread-list" role="listbox" aria-label="Conversations"></ul>
+
+      <div class="sidebar-footer">
+        <button id="upload-btn">&#8593; Upload Documents</button>
+        <button id="docs-btn">&#9776; Manage Documents</button>
+      </div>
+    </aside>
+
+    <!-- Chat Panel -->
+    <main id="chat-panel">
+      <div id="empty-state">
+        <p>Start a conversation or select one from the sidebar.</p>
+      </div>
+
+      <div id="messages-container" aria-live="polite"></div>
+
+      <div id="loading-indicator" hidden>
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+
+      <form id="chat-form">
+        <input
+          id="query-input"
+          type="text"
+          placeholder="Ask something..."
+          autocomplete="off"
+          required
+        />
+        <button type="submit" id="send-btn">Send</button>
+      </form>
+    </main>
+
+  </div>
+
+  <!-- Upload Modal -->
+  <div id="upload-modal" role="dialog" aria-modal="true" aria-label="Upload Document" hidden>
+    <div class="modal-backdrop" data-closes="upload-modal"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Upload Document</h2>
+        <button class="modal-close" id="modal-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label class="file-label" for="file-input">
+          <span id="file-label-text">Choose a PDF file</span>
+          <input id="file-input" type="file" accept=".pdf" />
+        </label>
+        <p id="upload-status" class="upload-status" hidden></p>
+      </div>
+      <div class="modal-footer">
+        <button id="upload-cancel-btn" class="btn-secondary">Cancel</button>
+        <button id="upload-confirm-btn" class="btn-primary">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Docs Modal -->
+  <div id="docs-modal" role="dialog" aria-modal="true" aria-label="Manage Documents" hidden>
+    <div class="modal-backdrop" data-closes="docs-modal"></div>
+    <div class="modal-card modal-card--wide">
+      <div class="modal-header">
+        <h2>Documents</h2>
+        <button class="modal-close" id="docs-modal-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="docs-list-status" class="upload-status" hidden></div>
+        <table id="docs-table" hidden>
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Uploaded</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="docs-tbody"></tbody>
+        </table>
+        <p id="docs-empty" hidden style="color:var(--text-muted);font-size:0.88rem;text-align:center;padding:16px 0;">
+          No documents uploaded yet.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="docs-modal-close-footer-btn" class="btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
