@@ -81,11 +81,23 @@ async def delete_document(
         db: AsyncSession = Depends(DBClient.get_db_session),
 ):
     document_service = DocumentService(db)
-    deleted_count = await document_service.delete_all_by_filter(
+
+    document = await document_service.get_by_filter(
         id=document_id,
         user_id=request.state.user.id
     )
-    logger.info(f"Deleted : {deleted_count} : {document_id}")
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    await document_service.delete_by_id(id=document_id)
+    if os.path.exists(document.file_path):
+        os.remove(document.file_path)
+        logger.info(f"Deleted local file: {document.file_path}")
+
+    logger.info(f"Deleted : {document_id}")
     return BaseResponse(
         message="Deleted the document"
     )

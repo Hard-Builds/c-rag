@@ -59,7 +59,7 @@ class BaseDB(Generic[ModelType]):
             await self.db.refresh(db_obj)
         return db_obj
 
-    async def delete_by_id(self, id: int) -> Optional[ModelType]:
+    async def delete_by_id(self, id: int | UUID) -> Optional[ModelType]:
         obj = await self.db.get(self.model, id)
         if obj:
             await self.db.delete(obj)
