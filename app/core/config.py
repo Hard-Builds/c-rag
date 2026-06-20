@@ -15,7 +15,10 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = "postgres"
     DB_ECHO: bool = False
 
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     EMBEDDING_DIM: int = 768  # Change to match your model (768 gemini, 1536 openai-small, 3072 openai-large)
+    EMBEDDING_BATCH_SIZE: int = 10
     MAX_CHAT_HISTORY: int = 6
 
     CORS_ALLOWED_URL: str | None = None

@@ -29,10 +29,28 @@ async function apiFetch(path, options = {}) {
 }
 
 // ── Thread list ───────────────────────────────────────────
-async function loadThreads() {
+async function loadThreads({ preservePlaceholders = false } = {}) {
   const threads = await apiFetch("/private/thread/");
-  setState({ threads: threads ?? [] });
+  const fetched = threads ?? [];
+  if (preservePlaceholders) {
+    const localMap = Object.fromEntries(state.threads.map(t => [t.id, t]));
+    const merged = fetched.map(t => (!t.title && localMap[t.id]) ? { ...t, title: localMap[t.id].title } : t);
+    setState({ threads: merged });
+  } else {
+    setState({ threads: fetched });
+  }
   renderThreadList();
+}
+
+function renderThreadListSkeleton(count = 3) {
+  const list = document.getElementById("thread-list");
+  list.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const li = document.createElement("li");
+    li.className = "thread-skeleton";
+    li.innerHTML = `<span class="skeleton-line" style="width:${55 + Math.random() * 30}%"></span>`;
+    list.appendChild(li);
+  }
 }
 
 function renderThreadList() {
@@ -78,20 +96,21 @@ function createBubble(role, content) {
   const wrap = document.createElement("div");
   wrap.className = role === "human" ? "msg msg-human" : "msg msg-ai";
 
-  const label = document.createElement("div");
-  label.className = "msg-label";
-  label.textContent = role === "human" ? "You" : "Bot";
+  const inner = document.createElement("div");
+  inner.className = "msg-content";
 
-  const text = document.createElement("div");
   if (role === "ai") {
-    text.className = "msg-markdown";
-    text.innerHTML = marked.parse(content);
+    const label = document.createElement("div");
+    label.className = "msg-label";
+    label.textContent = "rag";
+    wrap.appendChild(label);
+    inner.className = "msg-content msg-markdown";
+    inner.innerHTML = marked.parse(content);
   } else {
-    text.textContent = content;
+    inner.textContent = content;
   }
 
-  wrap.appendChild(label);
-  wrap.appendChild(text);
+  wrap.appendChild(inner);
   return wrap;
 }
 
@@ -106,8 +125,14 @@ async function sendMessage(query) {
   const threadId = state.activeThreadId ?? crypto.randomUUID();
 
   const humanMsg = { id: crypto.randomUUID(), role: "human", content: query };
-  setState({ messages: [...state.messages, humanMsg], isLoading: true });
+  setState({ messages: [...state.messages, humanMsg], isLoading: true, activeThreadId: threadId });
   showChatPanel();
+
+  if (isNewThread) {
+    setState({ threads: [{ id: threadId, title: query.slice(0, 40) }, ...state.threads] });
+    renderThreadList();
+  }
+
   renderMessages();
   setInputLocked(true);
   document.getElementById("loading-indicator").hidden = false;
@@ -128,7 +153,7 @@ async function sendMessage(query) {
     if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
 
     const aiMsg = { id: crypto.randomUUID(), role: "ai", content: "" };
-    setState({ activeThreadId: threadId, messages: [...state.messages, aiMsg] });
+    setState({ messages: [...state.messages, aiMsg] });
     renderMessages();
 
     const reader = res.body.getReader();
@@ -148,8 +173,7 @@ async function sendMessage(query) {
     setState({ isLoading: false });
 
     if (isNewThread) {
-      await loadThreads();
-      renderThreadList();
+      setTimeout(() => loadThreads({ preservePlaceholders: true }), 3000);
     }
   } catch (err) {
     const errMsg = { id: crypto.randomUUID(), role: "ai", content: `Error: ${err.message}` };
@@ -190,16 +214,35 @@ async function loadDocuments() {
       return;
     }
     for (const doc of docs) {
-      const tr = document.createElement("tr");
-      const date = new Date(doc.uploaded_at).toLocaleDateString(undefined, {
+      const fmtDate = (iso) => new Date(iso).toLocaleString(undefined, {
         year: "numeric", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
       });
-      tr.innerHTML = `<td>${doc.filename}</td><td>${date}</td><td></td>`;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${doc.filename}</td><td>${fmtDate(doc.uploaded_at)}</td><td>${fmtDate(doc.updated_at)}</td><td></td><td></td><td></td>`;
+
+      const statusTd = tr.querySelectorAll("td")[3];
+      const badge = document.createElement("span");
+      badge.className = `status-badge status-badge--${doc.status}`;
+      badge.textContent = doc.status;
+      statusTd.appendChild(badge);
+
+      if (doc.error) {
+        const truncated = doc.error.length > 32 ? doc.error.slice(0, 32) + "…" : doc.error;
+        const errSpan = document.createElement("span");
+        errSpan.className = "doc-error-inline";
+        errSpan.textContent = truncated;
+        errSpan.title = doc.error;
+        tr.querySelectorAll("td")[4].appendChild(errSpan);
+      }
+
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "btn-delete";
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => deleteDocument(doc.id, tr, deleteBtn));
       tr.querySelector("td:last-child").appendChild(deleteBtn);
+
       tbody.appendChild(tr);
     }
     table.hidden = false;
@@ -265,10 +308,10 @@ async function uploadFile() {
 
   try {
     await apiFetch("/private/document/ingest", { method: "POST", body: formData });
-    showUploadStatus("Document uploaded and indexed successfully.", "success");
+    showUploadStatus("Document uploaded successfully.", "success");
     document.getElementById("file-label-text").textContent = "Choose a PDF file";
     fileInput.value = "";
-    setTimeout(closeModal, 1800);
+    setTimeout(() => { closeModal(); openDocsModal(); }, 1800);
   } catch (err) {
     showUploadStatus(`Upload failed: ${err.message}`, "error");
     document.getElementById("upload-confirm-btn").disabled = false;
@@ -329,6 +372,8 @@ function wireEvents() {
   document.getElementById("docs-btn").addEventListener("click", openDocsModal);
   document.getElementById("docs-modal-close-btn").addEventListener("click", closeDocsModal);
   document.getElementById("docs-modal-close-footer-btn").addEventListener("click", closeDocsModal);
+  document.getElementById("docs-refresh-btn").addEventListener("click", loadDocuments);
+  document.getElementById("docs-add-btn").addEventListener("click", () => { closeDocsModal(); openModal(); });
 
   // Backdrop click closes the right modal
   document.querySelectorAll(".modal-backdrop").forEach((el) => {
@@ -354,6 +399,7 @@ async function init() {
   showEmptyState();
 
   try {
+    renderThreadListSkeleton(4);
     await loadThreads();
   } catch (err) {
     console.error("Failed to load threads:", err);

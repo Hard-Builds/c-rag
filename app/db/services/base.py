@@ -24,6 +24,11 @@ class BaseDB(Generic[ModelType]):
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
+    async def get_by_where(self, *expressions) -> Optional[ModelType]:
+        stmt = select(self.model).where(*expressions)
+        result = await self.db.execute(stmt)
+        return result.scalars().first()
+
     async def get_all_by_filter(self, **filters: Any) -> List[ModelType]:
         stmt = select(self.model).filter_by(**filters)
         result = await self.db.execute(stmt)
@@ -48,7 +53,8 @@ class BaseDB(Generic[ModelType]):
                 await self.db.refresh(obj)
         return objs
 
-    async def update(self, _id: int, obj_in: Dict[str, Any], commit: bool = True) -> Optional[ModelType]:
+    async def update(self, _id: int | UUID, obj_in: Dict[str, Any],
+                     commit: bool = True) -> Optional[ModelType]:
         db_obj = await self.db.get(self.model, _id)
         if db_obj is None:
             return None
