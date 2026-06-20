@@ -4,40 +4,58 @@ A production-ready Retrieval-Augmented Generation (RAG) API built with FastAPI, 
 
 ## Overview
 
-C-RAG lets users upload PDF documents and chat with them through a streaming conversational interface. Document ingestion runs in the background via Celery workers. The chat pipeline is a LangGraph state graph that automatically decides whether to retrieve context from stored document chunks or answer directly from the LLM.
+C-RAG lets users upload PDF documents and chat with them through a streaming conversational interface. Document ingestion runs in the background via Celery workers. The chat pipeline is a multi-stage LangGraph state graph: it retrieves context from stored document chunks, evaluates chunk relevance, falls back to live web search (via Tavily) when needed, refines the context sentence-by-sentence, then streams the final answer.
 
 ## Architecture
 
+### RAG Pipeline
+
+```mermaid
+flowchart TD
+    A([__start__]) --> B[upsert_thread]
+    B --> C[should_use_rag]
+
+    C -->|use_rag: true| D[context_retriever]
+    C -->|use_rag: false| H[chat_bot]
+
+    D --> E[context_eval]
+
+    E -->|CORRECT| G[knowledge_refiner]
+    E -->|INCORRECT| F[rewrite_query]
+    E -->|AMBIGUOUS| F
+
+    F --> F2[web_search]
+    F2 --> G
+    G --> H
+
+    H -->|over history limit| I[summarizer]
+    H -->|otherwise| Z([__end__])
+    I --> Z
+```
+
+### System Overview
+
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                        FastAPI App                       │
+│                        FastAPI App                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
 │  │  /v1/docs    │  │  /v1/threads │  │  /v1/health   │  │
 │  └──────┬───────┘  └──────┬───────┘  └───────────────┘  │
-│         │                 │                               │
-│  ┌──────▼───────┐  ┌──────▼───────┐                      │
-│  │  Doc Controller│ │Thread Controller                    │
-│  └──────┬───────┘  └──────┬───────┘                      │
-└─────────┼─────────────────┼───────────────────────────────┘
+│         │                 │                             │
+│  ┌──────▼───────┐  ┌──────▼──────────┐                  │
+│  │Doc Controller│  │Thread Controller│                  │
+│  └──────┬───────┘  └──────┬──────────┘                  │
+└─────────┼─────────────────┼─────────────────────────────┘
           │                 │
           ▼                 ▼
-┌─────────────────┐  ┌──────────────────────────────────────┐
-│  Celery Worker  │  │          LangGraph RAG Pipeline        │
-│  (PDF ingestor) │  │                                        │
-│                 │  │  START → upsert_thread → should_use_rag│
-│  load → chunk   │  │    ├─(true)→ context_retriever         │
-│    → embed      │  │    └─(false)┐                          │
-│    → store      │  │             ▼                          │
-└────────┬────────┘  │          chat_bot                      │
-         │           │    └─(>MAX_HISTORY)→ summarizer → END  │
-         │           └──────────────────────────────────────┘
-         │
-         ▼
-┌────────────────────────────────────────────────────────┐
-│              PostgreSQL + pgvector                      │
-│  users | threads | messages | documents | chunks       │
-│                        (HNSW vector index on chunks)   │
-└────────────────────────────────────────────────────────┘
+┌─────────────────┐  ┌─────────────────────┐  ┌───────────────────────┐
+│  Celery Worker  │  │  LangGraph Pipeline │  │  PostgreSQL+pgvector  │
+│  (PDF ingestor) │  │  (see graph above)  │  │  users | threads      │
+│                 │  │                     │  │  messages | documents │
+│  load → chunk   │  │  checkpointed to DB │  │  chunks (HNSW index)  │
+│    → embed      │  │  keyed by thread_id │  │                       │
+│    → store      │  │                     │  │                       │
+└─────────────────┘  └─────────────────────┘  └───────────────────────┘
 ```
 
 ## Tech Stack
@@ -48,6 +66,7 @@ C-RAG lets users upload PDF documents and chat with them through a streaming con
 | LLM / Embeddings | Google Gemini (via `langchain-google-genai`) |
 | RAG Pipeline | LangGraph |
 | Vector Search | pgvector (cosine distance, HNSW index) |
+| Web Search Fallback | Tavily (via `langchain-tavily`) |
 | Database | PostgreSQL (async via SQLAlchemy + asyncpg) |
 | Migrations | Alembic |
 | Background Tasks | Celery + Redis (`celery-aio-pool` for async tasks) |
@@ -58,6 +77,7 @@ C-RAG lets users upload PDF documents and chat with them through a streaming con
 - Python 3.12+
 - Docker (for PostgreSQL + Redis)
 - A Google Gemini API key
+- A Tavily API key (for web search fallback)
 
 ## Setup
 
@@ -83,6 +103,8 @@ This starts:
 
 Create a `.env` file in the project root:
 
+Copy `.env.example` to `.env` and fill in the required values:
+
 ```env
 # App
 ENV=local
@@ -100,14 +122,20 @@ REDIS_URL=redis://localhost:6379/0
 
 # Gemini
 GEMINI_API_KEY=your-api-key-here
-GEMINI_MODEL=gemini-2.0-flash
-GEMINI_EMBEDDING_MODEL=models/text-embedding-004
-GEMINI_IMAGE_MODEL=gemini-2.0-flash
+GEMINI_MODEL=gemini-3.1-flash-lite
+GEMINI_EMBEDDING_MODEL=models/gemini-embedding-001
+
+# Web search fallback
+TAVILY_API_KEY=your-tavily-key-here
 
 # RAG settings
 EMBEDDING_DIM=768
 EMBEDDING_BATCH_SIZE=10
 MAX_CHAT_HISTORY=6
+
+# Context evaluation thresholds (0.0–1.0)
+CONTEXT_EVAL_HIGHER_THR=0.7
+CONTEXT_EVAL_LOWER_THR=0.3
 ```
 
 > `EMBEDDING_DIM` must match the output dimensionality of your embedding model:
@@ -182,8 +210,15 @@ Each query flows through these nodes:
 1. **`upsert_thread`** — creates the thread record on first message, generates a title using the LLM
 2. **`should_use_rag`** — routes the query: asks the LLM whether the question requires document retrieval or can be answered from general knowledge / chat history
 3. **`context_retriever`** — embeds the query and runs a cosine similarity search over `chunks`, fetching the top-5 matching chunks for the user
-4. **`chat_bot`** — assembles the prompt (with or without context), streams the response token-by-token via a queue, and persists both the human and AI messages to the database
-5. **`summarizer`** — triggered when the message count exceeds `MAX_CHAT_HISTORY`; compresses old messages into a rolling summary to keep the context window bounded
+4. **`context_eval`** — scores each retrieved chunk against the question using a structured LLM call. Produces a verdict:
+   - `CORRECT` (any chunk score > `CONTEXT_EVAL_HIGHER_THR`) → proceed to `knowledge_refiner`
+   - `INCORRECT` (all chunks score < `CONTEXT_EVAL_LOWER_THR`) → fall back to web search
+   - `AMBIGUOUS` (mixed scores, no chunk clears the high bar) → fall back to web search
+5. **`rewrite_query`** — rewrites the user question into a short keyword-based web search query (6–14 words)
+6. **`web_search`** — calls Tavily to fetch up to 3 live web results as `Document` objects
+7. **`knowledge_refiner`** — decomposes the context into sentences, filters each sentence with the LLM (`keep=true/false`), and recomposes only the relevant sentences into `refined_context`
+8. **`chat_bot`** — assembles the prompt using `refined_context`, streams the response token-by-token via an `asyncio.Queue`, and persists both messages to the database
+9. **`summarizer`** — triggered when message count exceeds `MAX_CHAT_HISTORY`; compresses old messages into a rolling summary
 
 Graph state is persisted in PostgreSQL via `langgraph-checkpoint-postgres`, so conversations survive server restarts.
 
@@ -228,7 +263,7 @@ app/
 ├── bot/
 │   ├── state.py             # RAGState (LangGraph MessagesState extension)
 │   ├── llm.py               # Gemini LLM instance
-│   └── nodes/               # Graph nodes: router, retriever, generator, summarizer
+│   └── nodes/               # Graph nodes: router, retriever, context_eval, web_search, knowledge_refiner, generator, summarizer
 ├── rag/
 │   ├── graph.py             # LangGraph StateGraph definition
 │   ├── retriever.py         # Embedding + similarity search

@@ -37,6 +37,7 @@ class AppLogger:
         log_level = settings.LOG_LEVEL.upper()
         root = logging.getLogger("app")
         root.setLevel(log_level)
+        root.propagate = False
         handler = logging.StreamHandler(sys.stdout)
         fmt = RelativePathFormatter(
             "[%(asctime)s] [%(levelname)s] [%(request_id)s] "

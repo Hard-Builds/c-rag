@@ -42,7 +42,7 @@ class ThreadController:
         async def run_graph():
             async with DBClient._session_factory() as session:
                 try:
-                    await rag_bot.ainvoke(
+                    final_state = await rag_bot.ainvoke(
                         input={
                             "question": query
                         },
@@ -54,6 +54,7 @@ class ThreadController:
                         }}
                     )
                     await session.commit()
+                    logger.info(f"final_state : {final_state}")
                 except Exception as e:
                     await session.rollback()
                     logger.error(f"Graph error: {e}")
