@@ -48,14 +48,14 @@ flowchart TD
 └─────────┼─────────────────┼─────────────────────────────┘
           │                 │
           ▼                 ▼
-┌─────────────────┐  ┌─────────────────────┐  ┌──────────────────────┐
-│  Celery Worker  │  │  LangGraph Pipeline  │  │  PostgreSQL+pgvector │
-│  (PDF ingestor) │  │  (see graph above)   │  │  users | threads     │
+┌─────────────────┐  ┌─────────────────────┐  ┌───────────────────────┐
+│  Celery Worker  │  │  LangGraph Pipeline │  │  PostgreSQL+pgvector  │
+│  (PDF ingestor) │  │  (see graph above)  │  │  users | threads      │
 │                 │  │                     │  │  messages | documents │
-│  load → chunk   │  │  checkpointed to DB  │  │  chunks (HNSW index) │
-│    → embed      │  │  keyed by thread_id  │  │                      │
-│    → store      │  │                     │  │                      │
-└─────────────────┘  └─────────────────────┘  └──────────────────────┘
+│  load → chunk   │  │  checkpointed to DB │  │  chunks (HNSW index)  │
+│    → embed      │  │  keyed by thread_id │  │                       │
+│    → store      │  │                     │  │                       │
+└─────────────────┘  └─────────────────────┘  └───────────────────────┘
 ```
 
 ## Tech Stack
