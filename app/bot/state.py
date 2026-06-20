@@ -13,6 +13,11 @@ class RAGState(MessagesState):
     # Context Node variables
     context: List[Document]
 
+    # Context Eval
+    good_docs: List[Document]
+    verdict: str
+    reason: str
+
     # Context Refinement Variables
     refined_context: str
 

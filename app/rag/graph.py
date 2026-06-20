@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, START, END
 
 from app.bot import RAGState
 from app.bot.nodes import summarizer, should_use_rag, chat_bot, \
-    context_retriever, upsert_thread, knowledge_refiner
+    context_retriever, upsert_thread, knowledge_refiner, context_eval
 from app.core import settings
 
 
@@ -29,13 +29,14 @@ class RAGGraph:
         builder.add_node("chat_bot", chat_bot)
         builder.add_node("summarizer", summarizer)
         builder.add_node("knowledge_refiner", knowledge_refiner)
+        builder.add_node("context_eval", context_eval)
 
         builder.add_edge(START, "upsert_thread")
 
         builder.add_edge("upsert_thread", "should_use_rag")
 
         # Knowledge refinement
-        builder.add_edge("context_retriever", "knowledge_refiner")
+        builder.add_edge("context_retriever", "context_eval")
         builder.add_edge("knowledge_refiner", "chat_bot")
 
         builder.add_conditional_edges(
@@ -44,6 +45,15 @@ class RAGGraph:
             {
                 True: "context_retriever",
                 False: "chat_bot"
+            }
+        )
+        builder.add_conditional_edges(
+            "context_eval",
+            lambda state: state["verdict"],
+            {
+                "CORRECT": "knowledge_refiner",
+                "INCORRECT": END,
+                "AMBIGUOUS": END
             }
         )
         builder.add_conditional_edges(
