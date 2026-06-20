@@ -1,9 +1,13 @@
+import asyncio
 from uuid import UUID
 
 from fastapi import HTTPException
 from starlette import status
 
+from app.core import logger
+from app.db import DBClient
 from app.db.services import ThreadService, MessageService
+from app.rag import RAGGraph
 
 
 class ThreadController:
@@ -25,3 +29,42 @@ class ThreadController:
         messages = await self.message_service.get_messages_for_thread(
             thread_id=thread_id)
         return messages
+
+    async def ask_a_query(
+            self,
+            user_id: UUID,
+            thread_id: UUID,
+            rag_bot: RAGGraph,
+            query: str
+    ):
+        queue = asyncio.Queue()
+
+        async def run_graph():
+            async with DBClient._session_factory() as session:
+                try:
+                    await rag_bot.ainvoke(
+                        input={
+                            "question": query
+                        },
+                        config={"configurable": {
+                            "thread_id": thread_id,
+                            "db": session,
+                            "user_id": user_id,
+                            "stream_queue": queue,
+                        }}
+                    )
+                    await session.commit()
+                except Exception as e:
+                    await session.rollback()
+                    logger.error(f"Graph error: {e}")
+                    await queue.put(None)
+
+        async def token_generator():
+            asyncio.create_task(run_graph())
+            while True:
+                token = await queue.get()
+                if token is None:
+                    break
+                yield token
+
+        return token_generator()

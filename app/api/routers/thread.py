@@ -1,6 +1,4 @@
-import asyncio
 import uuid
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -11,7 +9,6 @@ from app.api.controller import ThreadController
 from app.api.models import BaseResponse, ThreadListRespModel, \
     ThreadMessageListRespModel, QueryRequest
 from app.api.utils import SafeStreamingResponse
-from app.core import logger
 from app.db import DBClient
 
 thread_router = APIRouter()
@@ -55,43 +52,16 @@ async def get_thread_conversation(
 async def query(
         request: Request,
         body: QueryRequest,
-        thread_id: Optional[uuid.UUID],
+        thread_id: uuid.UUID,
+        db: AsyncSession = Depends(DBClient.get_db_session)
 ):
-    # todo: put this logic in controller
-    user_id = request.state.user.id
-    rag_bot = request.app.state.rag_bot
-
-    queue = asyncio.Queue()
-
-    async def run_graph():
-        async with DBClient._session_factory() as session:
-            try:
-                await rag_bot.ainvoke(
-                    input={
-                        "question": body.query
-                    },
-                    config={"configurable": {
-                        "thread_id": thread_id,
-                        "db": session,
-                        "user_id": user_id,
-                        "stream_queue": queue,
-                    }}
-                )
-                await session.commit()
-            except Exception as e:
-                await session.rollback()
-                logger.error(f"Graph error: {e}")
-                await queue.put(None)
-
-    async def token_generator():
-        asyncio.create_task(run_graph())
-        while True:
-            token = await queue.get()
-            if token is None:
-                break
-            yield token
-
+    thread_controller = ThreadController(db)
     return SafeStreamingResponse(
-        token_generator(),
+        await thread_controller.ask_a_query(
+            user_id=request.state.user.id,
+            thread_id=thread_id,
+            rag_bot=request.app.state.rag_bot,
+            query=body.query
+        ),
         media_type="text/plain"
     )
