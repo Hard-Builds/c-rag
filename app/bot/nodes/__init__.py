@@ -5,3 +5,4 @@ from .knowledge_refiner import knowledge_refiner
 from .router import should_use_rag
 from .summarizer import summarizer
 from .thread_handler import upsert_thread
+from .web_search import web_search

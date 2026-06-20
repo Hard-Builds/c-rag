@@ -88,24 +88,23 @@ async def context_eval(state: RAGState, config: RunnableConfig):
 
     if scores and all(s < settings.CONTEXT_EVAL_LOWER_THR for s in scores):
         # No chunk clears the minimum bar — nothing useful to pass downstream
-        response = {
+        return {
             "good_docs": [],
             "verdict": "INCORRECT",
             "reason": f"All retrieved chunks scored < {settings.CONTEXT_EVAL_LOWER_THR}. "
                       f"No chunk was sufficient.",
-            "answer": "Sorry, I don't have enough knowledge to answer your question"
         }
-    else:
-        # Some chunks pass the lower bar but none clear the high bar — mixed signals
-        response = {
-            "good_docs": good_docs,
-            "verdict": "AMBIGUOUS",
-            "reason": f"No chunk scored > {settings.CONTEXT_EVAL_HIGHER_THR},"
-                      f"but not all where {settings.CONTEXT_EVAL_LOWER_THR}."
-                      f"Mixed relevance signals",
-            "answer": "Sorry, I am a bit confused, as I have some ambiguous "
-                      "context regarding your question"
-        }
+
+    # Some chunks pass the lower bar but none clear the high bar — mixed signals
+    response = {
+        "good_docs": good_docs,
+        "verdict": "AMBIGUOUS",
+        "reason": f"No chunk scored > {settings.CONTEXT_EVAL_HIGHER_THR},"
+                  f"but not all where {settings.CONTEXT_EVAL_LOWER_THR}."
+                  f"Mixed relevance signals",
+        "answer": "Sorry, I am a bit confused, as I have some ambiguous "
+                  "context regarding your question"
+    }
 
     if queue := config["configurable"].get("stream_queue"):
         await queue.put(state["answer"])

@@ -34,7 +34,6 @@ async def knowledge_refiner(state: RAGState):
     2. Filtration
     3. Recomposition
     """
-    logger.info("Filtering context...")
     llm_model = await _structured_llm()
 
     prompt = ChatPromptTemplate.from_messages([
@@ -50,9 +49,17 @@ async def knowledge_refiner(state: RAGState):
     filter_chain = prompt | llm_model
 
     question = state["question"]
+
+    if state["verdict"] == "CORRECT":
+        logger.info("Refining context...")
+        context = state.get("good_docs", [])
+    else:
+        logger.info("Refining web docs...")
+        context = state.get("web_docs", [])
+
     context_chunk = "\n\n".join([
         f"{chunk.page_content}"
-        for idx, chunk in enumerate(state.get("good_docs", []))
+        for idx, chunk in enumerate(context)
     ])
 
     # 1. Decomposition

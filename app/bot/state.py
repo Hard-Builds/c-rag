@@ -18,6 +18,8 @@ class RAGState(MessagesState):
     verdict: str
     reason: str
 
+    web_docs: List[Document]
+
     # Context Refinement Variables
     refined_context: str
 
