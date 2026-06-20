@@ -12,25 +12,25 @@ C-RAG lets users upload PDF documents and chat with them through a streaming con
 
 ```mermaid
 flowchart TD
-    START([__start__]) --> upsert_thread
-    upsert_thread --> should_use_rag
+    A([__start__]) --> B[upsert_thread]
+    B --> C[should_use_rag]
 
-    should_use_rag -->|use_rag = True| context_retriever
-    should_use_rag -->|use_rag = False| chat_bot
+    C -->|use_rag: true| D[context_retriever]
+    C -->|use_rag: false| H[chat_bot]
 
-    context_retriever --> context_eval
+    D --> E[context_eval]
 
-    context_eval -->|CORRECT| knowledge_refiner
-    context_eval -->|INCORRECT| rewrite_query
-    context_eval -->|AMBIGUOUS| rewrite_query
+    E -->|CORRECT| G[knowledge_refiner]
+    E -->|INCORRECT| F[rewrite_query]
+    E -->|AMBIGUOUS| F
 
-    rewrite_query --> web_search
-    web_search --> knowledge_refiner
-    knowledge_refiner --> chat_bot
+    F --> F2[web_search]
+    F2 --> G
+    G --> H
 
-    chat_bot -->|messages > MAX_CHAT_HISTORY| summarizer
-    chat_bot -->|otherwise| END([__end__])
-    summarizer --> END
+    H -->|over history limit| I[summarizer]
+    H -->|otherwise| Z([__end__])
+    I --> Z
 ```
 
 ### System Overview
