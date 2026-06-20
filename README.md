@@ -122,9 +122,8 @@ REDIS_URL=redis://localhost:6379/0
 
 # Gemini
 GEMINI_API_KEY=your-api-key-here
-GEMINI_MODEL=gemini-2.0-flash
-GEMINI_EMBEDDING_MODEL=models/text-embedding-004
-GEMINI_IMAGE_MODEL=gemini-2.0-flash
+GEMINI_MODEL=gemini-3.1-flash-lite
+GEMINI_EMBEDDING_MODEL=models/gemini-embedding-001
 
 # Web search fallback
 TAVILY_API_KEY=your-tavily-key-here
