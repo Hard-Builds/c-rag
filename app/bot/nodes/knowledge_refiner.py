@@ -53,9 +53,12 @@ async def knowledge_refiner(state: RAGState):
     if state["verdict"] == "CORRECT":
         logger.info("Refining context...")
         context = state.get("good_docs", [])
-    else:
+    elif state["verdict"] == "INCORRECT":
         logger.info("Refining web docs...")
         context = state.get("web_docs", [])
+    elif state["verdict"] == "AMBIGUOUS":
+        logger.info("Refining both good and web docs...")
+        context = state.get("web_docs", []) + state.get("good_docs", [])
 
     context_chunk = "\n\n".join([
         f"{chunk.page_content}"

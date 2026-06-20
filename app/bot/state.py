@@ -18,6 +18,8 @@ class RAGState(MessagesState):
     verdict: str
     reason: str
 
+    # Web search vars
+    web_search_query: str
     web_docs: List[Document]
 
     # Context Refinement Variables

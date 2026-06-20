@@ -9,8 +9,8 @@ tavily = TavilySearchResults(max_results=3)
 
 async def web_search(state: RAGState):
     logger.info("Fetching data from web...")
-    q = state["question"]
-    results = await tavily.ainvoke({"query": q})
+    query = state["web_search_query"]
+    results = await tavily.ainvoke({"query": query})
 
     web_docs = []
     for r in results or []:

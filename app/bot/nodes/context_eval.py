@@ -78,7 +78,7 @@ async def context_eval(state: RAGState, config: RunnableConfig):
     )
 
     # At least one highly relevant chunk found — proceed to refinement
-    if any(s > settings.CONTEXT_EVAL_HIGHER_THR for s in scores):
+    if scores and any(s > settings.CONTEXT_EVAL_HIGHER_THR for s in scores):
         return {
             "good_docs": good_docs,
             "verdict": "CORRECT",
@@ -96,18 +96,10 @@ async def context_eval(state: RAGState, config: RunnableConfig):
         }
 
     # Some chunks pass the lower bar but none clear the high bar — mixed signals
-    response = {
+    return {
         "good_docs": good_docs,
         "verdict": "AMBIGUOUS",
         "reason": f"No chunk scored > {settings.CONTEXT_EVAL_HIGHER_THR},"
                   f"but not all where {settings.CONTEXT_EVAL_LOWER_THR}."
                   f"Mixed relevance signals",
-        "answer": "Sorry, I am a bit confused, as I have some ambiguous "
-                  "context regarding your question"
     }
-
-    if queue := config["configurable"].get("stream_queue"):
-        await queue.put(state["answer"])
-        await queue.put(None)
-
-    return response
