@@ -29,6 +29,7 @@ async def _get_chat_history_str(state: MessagesState) -> str:
 
 
 async def should_use_rag(state: RAGState) -> dict:
+    """This to reduce the possibility of in-descriminant retrieval"""
     class RAGDecisionResp(TypedDict):
         use_rag: bool
 
