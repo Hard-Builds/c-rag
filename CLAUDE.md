@@ -91,7 +91,9 @@ After retrieval, `context_eval` scores each chunk independently against the ques
 Thresholds are configurable: `CONTEXT_EVAL_HIGHER_THR` (default 0.7) and `CONTEXT_EVAL_LOWER_THR` (default 0.3).
 
 ### Knowledge refiner
-`knowledge_refiner` decomposes context into individual sentences, filters each one with the LLM (`keep=true/false`), and recomposes only the relevant sentences into a single `refined_context` string. The `chat_bot` node receives this string directly instead of raw document chunks.
+`knowledge_refiner` decomposes context into individual sentences, filters them in a **single batched LLM call**, and recomposes only the relevant sentences into a single `refined_context` string. The `chat_bot` node receives this string directly instead of raw document chunks.
+
+The original C-RAG paper (https://arxiv.org/pdf/2401.15884) uses a fine-tuned small model that classifies each sentence individually as keep/drop — one forward pass per sentence, but cheap because it's a local classifier. Since this implementation uses a general-purpose LLM over an API, making one call per sentence is too expensive and slow. Instead, all sentences are sent together in a numbered list and the model returns a `{index, keep}` decision for each. This achieves the same sentence-level filtering in a single API call.
 
 ### pgvector for similarity search
 Chunks are stored in the `chunks` table with a `Vector(768)` column. Retrieval uses cosine distance via pgvector's `.cosine_distance()` method. An HNSW index is created in the Alembic initial migration for fast approximate nearest-neighbor search.

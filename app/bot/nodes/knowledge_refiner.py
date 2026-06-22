@@ -13,7 +13,7 @@ from app.core import logger
 
 async def _structured_llm():
     class KeepOrDrop(BaseModel):
-        keep: bool
+        kept: list[str]
 
     llm_with_model = llm_model.with_structured_output(KeepOrDrop)
     return llm_with_model
@@ -39,11 +39,12 @@ async def knowledge_refiner(state: RAGState):
     prompt = ChatPromptTemplate.from_messages([
         SystemMessage(
             "You are a strict relevance filter.\n"
-            "Return keep=true only if the sentence directly helps answer the question.\n"
-            "Use ONLY the sentence. Output JSON only."
+            "From the given list of sentences, Return only if the sentence "
+            "directly helps answer the question.\n"
+            "Return ONLY sentences in the list."
         ),
         HumanMessagePromptTemplate.from_template(
-            template="Question: {question}\n\n Sentence:{sentence}",
+            template="Question: {question}\n\n Sentences:\n{sentences}",
         )
     ])
     filter_chain = prompt | llm_model
@@ -69,23 +70,14 @@ async def knowledge_refiner(state: RAGState):
     strips = await _decompose_sentences(context_chunk)
 
     # 2. Filter
-    decisions = await asyncio.gather(*[
-        filter_chain.ainvoke({
-            "question": question,
-            "sentence": strips[idx]
-        })
-        for idx in range(len(strips))
-    ])
-
-    kept = [
-        strip for strip, d in zip(strips, decisions) if d.keep
-    ]
-
-    logger.info(f"Refined and Kept {len(kept)} sentences out of {len(strips)}")
-
-    # 3. Recompose
-    refined_context = "\n-".join(kept).strip()
+    refined_context = await filter_chain.ainvoke({
+        "question": question,
+        "sentences": "\n".join(map(
+            lambda x: f"[{x[0] + 1}]. {x[1]}",
+            enumerate(strips)
+        ))
+    })
 
     return {
-        "refined_context": refined_context
+        "refined_context": refined_context.kept
     }

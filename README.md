@@ -2,6 +2,8 @@
 
 A production-ready Retrieval-Augmented Generation (RAG) API built with FastAPI, LangGraph, PostgreSQL + pgvector, and Google Gemini.
 
+Based on the [Corrective RAG (C-RAG) paper](https://arxiv.org/pdf/2401.15884).
+
 ## Overview
 
 C-RAG lets users upload PDF documents and chat with them through a streaming conversational interface. Document ingestion runs in the background via Celery workers. The chat pipeline is a multi-stage LangGraph state graph: it retrieves context from stored document chunks, evaluates chunk relevance, falls back to live web search (via Tavily) when needed, refines the context sentence-by-sentence, then streams the final answer.
