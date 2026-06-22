@@ -62,16 +62,6 @@ async def get_document(
     )
 
 
-"""
-todo: complete
-@document_router.post("/")
-async def retry_document_ingestion(
-        request: Request,
-        db: AsyncSession = Depends(DBClient.get_db_session),
-):
-"""
-
-
 @document_router.delete("/")
 async def delete_document(
         request: Request,
