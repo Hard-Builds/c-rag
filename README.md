@@ -35,6 +35,11 @@ flowchart TD
     I --> Z
 ```
 
+### Preview
+
+![RAG Bot UI](assets/preview.png)
+![RAG Bot Doc UI](assets/preview2.png)
+
 ### System Overview
 
 ```
