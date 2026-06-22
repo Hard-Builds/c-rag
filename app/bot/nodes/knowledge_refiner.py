@@ -1,4 +1,3 @@
-import asyncio
 import re
 
 from langchain_core.messages import SystemMessage
@@ -38,13 +37,19 @@ async def knowledge_refiner(state: RAGState):
 
     prompt = ChatPromptTemplate.from_messages([
         SystemMessage(
-            "You are a strict relevance filter.\n"
-            "From the given list of sentences, Return only if the sentence "
-            "directly helps answer the question.\n"
-            "Return ONLY sentences in the list."
+            "You are a strict relevance filter for a RAG pipeline.\n"
+            "Given a question and a numbered list of sentences, decide which sentences directly and specifically answer the question.\n\n"
+            "Rules: \n"
+            "- Keep the sentence ONLY if it contains information that directly addresses the question.\n"
+            "- Drop sentence that are generic, off-topic, or only loosely related.\n"
+            "- DO NOT modify, rephrase or merge sentences.\n"
+            "- Return a JSON object with a single key 'kept' stating the list of sentences to keep.\n"
+            "- If no sentence is relevant, return an empty list."
         ),
         HumanMessagePromptTemplate.from_template(
-            template="Question: {question}\n\n Sentences:\n{sentences}",
+            template="Question: {question}\n\n "
+                     "Sentences:\n{sentences}\n\n"
+                     "Return only the JSON",
         )
     ])
     filter_chain = prompt | llm_model
@@ -79,5 +84,5 @@ async def knowledge_refiner(state: RAGState):
     })
 
     return {
-        "refined_context": refined_context.kept
+        "refined_context": "\n\n".join(refined_context.kept)
     }
