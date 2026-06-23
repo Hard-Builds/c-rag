@@ -3,7 +3,6 @@ import asyncio
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, \
     HumanMessagePromptTemplate
-from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from app.bot import RAGState
@@ -22,7 +21,7 @@ async def _structured_llm():
     return llm_with_model
 
 
-async def context_eval(state: RAGState, config: RunnableConfig):
+async def context_eval(state: RAGState):
     """
     Scores each retrieved chunk against the question and decides whether the
     context is usable for answer generation.

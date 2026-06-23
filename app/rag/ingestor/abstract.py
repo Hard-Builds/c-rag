@@ -1,6 +1,5 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Optional
 from uuid import UUID
 
 from langchain_core.documents import Document
@@ -128,7 +127,7 @@ class BaseIngestor(ABC):
     async def _document_status_update(
             self,
             status: DocumentStatusEnum,
-            error_msg: Optional[str] = None
+            error_msg: str | None = None
     ):
         update_info = {"status": status}
         if error_msg:

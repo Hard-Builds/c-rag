@@ -67,8 +67,8 @@ async def knowledge_refiner(state: RAGState):
         context = state.get("web_docs", []) + state.get("good_docs", [])
 
     context_chunk = "\n\n".join([
-        f"{chunk.page_content}"
-        for idx, chunk in enumerate(context)
+        chunk.page_content
+        for chunk in context
     ])
 
     # 1. Decomposition
