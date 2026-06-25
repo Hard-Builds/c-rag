@@ -14,7 +14,7 @@ from app.db.services import MessageService
 
 async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
     context_chunk = state.get("refined_context")
-    if state["use_rag"]:
+    if context_chunk:
         logger.info("Proceeding with context...")
         prompt_message_list = [
             SystemMessage(
@@ -103,12 +103,7 @@ async def chat_bot(state: RAGState, config: RunnableConfig) -> dict:
 
     return {
         "answer": answer_str,
-        "messages": [HumanMessage(state["question"]), AIMessage(answer_str)],
-        "refined_context": "",
         "context": [],
-        "good_docs": [],
-        "web_docs": [],
-        "web_search_query": "",
-        "verdict": "",
-        "reason": "",
+        "messages": [HumanMessage(state["question"]), AIMessage(answer_str)],
+        "refined_context": ""
     }
